@@ -1,0 +1,71 @@
+Vagrant.configure("2") do |config|
+
+  config.vm.define "guacServer" do |guacServer|
+
+    guacServer.vm.box = "ubuntu/focal64"
+    guacServer.vm.hostname = "guacServer"
+
+    guacServer.vm.network :private_network, ip: "192.168.56.101"
+
+    guacServer.vm.provider "virtualbox" do |vb|
+      vb.name = "guacServer"
+      vb.cpus = "2"
+      vb.memory = "1024"
+    end
+
+    guacServer.vm.provision "file", source: "user-mapping.xml", destination: "/tmp/user-mapping.xml"
+    guacServer.vm.provision "file", source: "guacamole.properties", destination: "/tmp/guacamole.properties"
+
+    guacServer.vm.provision "shell", inline: <<-SHELL
+    sudo apt update
+    sudo apt install -y gcc vim curl wget g++ libcairo2-dev libjpeg-turbo8-dev libpng-dev libtool-bin libossp-uuid-dev libavcodec-dev libavutil-dev libswscale-dev build-essential libpango1.0-dev libssh2-1-dev libvncserver-dev libtelnet-dev freerdp2-dev freerdp2-x11 libwebsockets-dev libssl-dev libvorbis-dev libwebp-dev tomcat9 tomcat9-admin tomcat9-user openjdk-11-jdk
+    sudo wget https://dlcdn.apache.org/guacamole/1.4.0/source/guacamole-server-1.4.0.tar.gz
+    tar zxf guacamole-server-1.4.0.tar.gz
+    cd guacamole-server-1.4.0
+    sudo ./configure --with-init-dir=/etc/init.d
+    sudo make
+    sudo make install
+    sudo ldconfig
+    cd /var/lib/tomcat9/
+    sudo wget https://dlcdn.apache.org/guacamole/1.4.0/binary/guacamole-1.4.0.war
+    sudo mv guacamole-1.4.0.war webapps/guacamole.war
+    sudo mkdir /etc/guacamole
+    sudo mkdir /usr/share/tomcat9/.guacamole
+    sudo cp /tmp/guacamole.properties /etc/guacamole/guacamole.properties
+    sudo ln -s /etc/guacamole/guacamole.properties /usr/share/tomcat9/.guacamole/
+    # echo -n guacamole | openssl md5  # To generate password used for guacamole web page login
+    sudo cp /tmp/user-mapping.xml /etc/guacamole/user-mapping.xml
+    sudo chmod 600 /etc/guacamole/user-mapping.xml
+    sudo chown tomcat:tomcat /etc/guacamole/*
+    sudo sh -c 'echo "GUACAMOLE_HOME=/etc/guacamole" | sudo tee -a /etc/default/tomcat9'
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now tomcat9 guacd
+    sudo systemctl restart guacd
+    sudo systemctl restart guacd
+    SHELL
+
+  end
+
+  config.vm.define "sshClient" do |sshClient|
+
+    sshClient.vm.box = "ubuntu/focal64"
+    sshClient.vm.hostname = "sshClient"
+
+    sshClient.vm.network :private_network, ip: "192.168.56.111"
+
+    sshClient.vm.provider "virtualbox" do |vb|
+      vb.name = "sshClient"
+      vb.cpus = "1"
+      vb.memory = "512"
+    end
+
+    sshClient.vm.provision "shell", inline: <<-SHELL
+    sudo sed -i 's/^PasswordAuthentication.*$/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+    sudo systemctl restart sshd
+    sudo useradd -m guacamole
+    sudo sh -c 'echo "guacamole\nguacamole" | passwd guacamole'
+    SHELL
+
+  end
+
+end

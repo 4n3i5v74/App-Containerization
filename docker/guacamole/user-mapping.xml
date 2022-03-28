@@ -1,0 +1,19 @@
+<user-mapping>
+	<authorize
+		username="guacamole"
+		password="4d88a064222fa9b728a69b6ad7cf81ef"
+		encoding="md5">
+		<connection name="sshClient-1">
+			<protocol>ssh</protocol>
+			<param name="hostname">192.168.56.111</param>
+			<param name="port">22</param>
+			<param name="username">guacamole</param>
+			<param name="password">guacamole</param>
+		</connection>
+		<connection name="sshClient-2">
+			<protocol>ssh</protocol>
+			<param name="hostname">192.168.56.111</param>
+			<param name="port">22</param>
+		</connection>
+	</authorize>
+</user-mapping>
